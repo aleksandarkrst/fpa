@@ -16,6 +16,7 @@ export function getDb(): Database.Database {
 
   db = new Database(DB_PATH);
   db.pragma("journal_mode = WAL");
+  db.pragma("foreign_keys = ON");
   initSchema(db);
   return db;
 }
@@ -37,6 +38,63 @@ function initSchema(db: Database.Database) {
       periods_ahead INTEGER NOT NULL DEFAULT 6
     );
   `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS legal_entity (
+      id   INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      code TEXT NOT NULL UNIQUE
+    );
+    CREATE TABLE IF NOT EXISTS department (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      name            TEXT NOT NULL,
+      code            TEXT NOT NULL UNIQUE,
+      legal_entity_id INTEGER NOT NULL REFERENCES legal_entity(id) ON DELETE CASCADE
+    );
+    CREATE TABLE IF NOT EXISTS profit_center (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      name          TEXT NOT NULL,
+      code          TEXT NOT NULL UNIQUE,
+      department_id INTEGER NOT NULL REFERENCES department(id) ON DELETE CASCADE
+    );
+    CREATE TABLE IF NOT EXISTS cost_center (
+      id               INTEGER PRIMARY KEY AUTOINCREMENT,
+      name             TEXT NOT NULL,
+      code             TEXT NOT NULL UNIQUE,
+      profit_center_id INTEGER NOT NULL REFERENCES profit_center(id) ON DELETE CASCADE
+    );
+  `);
+
+  const cols = db.pragma("table_info(revenue)") as { name: string }[];
+  if (!cols.some((c) => c.name === "profit_center_id")) {
+    db.exec(
+      "ALTER TABLE revenue ADD COLUMN profit_center_id INTEGER REFERENCES profit_center(id) ON DELETE SET NULL"
+    );
+  }
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS period_config (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      type         TEXT NOT NULL UNIQUE CHECK(type IN ('past', 'actual', 'planning')),
+      start_period TEXT NOT NULL,
+      end_period   TEXT NOT NULL
+    );
+  `);
+
+  const pcRows = (
+    db.prepare("SELECT COUNT(*) as c FROM period_config").get() as { c: number }
+  ).c;
+  if (pcRows === 0) {
+    db.prepare(
+      "INSERT INTO period_config (type, start_period, end_period) VALUES (?, ?, ?)"
+    ).run("past", "2025-01", "2025-12");
+    db.prepare(
+      "INSERT INTO period_config (type, start_period, end_period) VALUES (?, ?, ?)"
+    ).run("actual", "2026-01", "2026-12");
+    db.prepare(
+      "INSERT INTO period_config (type, start_period, end_period) VALUES (?, ?, ?)"
+    ).run("planning", "2026-01", "2027-12");
+  }
 
   const rowCount = (
     db.prepare("SELECT COUNT(*) as c FROM revenue").get() as { c: number }

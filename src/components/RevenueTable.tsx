@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { ProfitCenterOption } from "@/lib/types";
 
 interface RevenueRow {
   id: number;
@@ -8,11 +9,15 @@ interface RevenueRow {
   actual: number | null;
   forecast: number | null;
   category: string;
+  profit_center_id: number | null;
+  profit_center_code: string | null;
+  profit_center_name: string | null;
 }
 
 interface Props {
   rows: RevenueRow[];
-  onAdd: (period: string, actual: number) => Promise<void>;
+  profitCenters?: ProfitCenterOption[];
+  onAdd: (period: string, actual: number, profit_center_id?: number | null) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
 }
 
@@ -31,9 +36,10 @@ function fmtPeriod(period: string) {
   return `${months[parseInt(month) - 1]} ${year}`;
 }
 
-export default function RevenueTable({ rows, onAdd, onDelete }: Props) {
+export default function RevenueTable({ rows, profitCenters = [], onAdd, onDelete }: Props) {
   const [period, setPeriod] = useState("");
   const [actual, setActual] = useState("");
+  const [profitCenterId, setProfitCenterId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -48,9 +54,10 @@ export default function RevenueTable({ rows, onAdd, onDelete }: Props) {
     }
     setSubmitting(true);
     try {
-      await onAdd(period, val);
+      await onAdd(period, val, profitCenterId);
       setPeriod("");
       setActual("");
+      setProfitCenterId(null);
     } finally {
       setSubmitting(false);
     }
@@ -88,6 +95,21 @@ export default function RevenueTable({ rows, onAdd, onDelete }: Props) {
             required
           />
         </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-gray-500">Profit Center</label>
+          <select
+            value={profitCenterId ?? ""}
+            onChange={(e) => setProfitCenterId(e.target.value ? Number(e.target.value) : null)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[180px]"
+          >
+            <option value="">— None —</option>
+            {profitCenters.map((pc) => (
+              <option key={pc.id} value={pc.id}>
+                {pc.department_name} / {pc.name}
+              </option>
+            ))}
+          </select>
+        </div>
         <div className="flex items-end">
           <button
             type="submit"
@@ -112,6 +134,9 @@ export default function RevenueTable({ rows, onAdd, onDelete }: Props) {
               <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase tracking-wide">
                 Actual
               </th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                Profit Center
+              </th>
               <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase tracking-wide">
                 Category
               </th>
@@ -129,6 +154,16 @@ export default function RevenueTable({ rows, onAdd, onDelete }: Props) {
                 </td>
                 <td className="py-2 px-3 text-right font-mono text-gray-800">
                   {fmt(row.actual)}
+                </td>
+                <td className="py-2 px-3 text-gray-600">
+                  {row.profit_center_code ? (
+                    <span>
+                      <span className="font-mono text-xs text-gray-400">{row.profit_center_code}</span>
+                      {" "}{row.profit_center_name}
+                    </span>
+                  ) : (
+                    <span className="text-gray-300">—</span>
+                  )}
                 </td>
                 <td className="py-2 px-3 text-right text-gray-400">
                   {row.category}
