@@ -32,11 +32,14 @@ interface RevenueRow {
   profit_center_id: number | null;
 }
 
+type ViewMode = "past" | "actual" | "planning";
+
 export default function PlanningPage() {
   const [forecast, setForecast] = useState<ForecastData | null>(null);
   const [revenue, setRevenue] = useState<RevenueRow[]>([]);
   const [profitCenters, setProfitCenters] = useState<ProfitCenterOption[]>([]);
   const [periodConfigs, setPeriodConfigs] = useState<PeriodConfig[]>([]);
+  const [viewMode, setViewMode] = useState<ViewMode>("planning");
   const [loading, setLoading] = useState(true);
 
   const loadAll = useCallback(async () => {
@@ -69,6 +72,15 @@ export default function PlanningPage() {
     );
   }
 
+  const activeConfig = periodConfigs.find((c) => c.type === viewMode);
+  const chartPoints = forecast
+    ? activeConfig
+      ? forecast.points.filter(
+          (p) => p.period >= activeConfig.start_period && p.period <= activeConfig.end_period
+        )
+      : forecast.points
+    : [];
+
   return (
     <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
       <div>
@@ -88,12 +100,14 @@ export default function PlanningPage() {
         />
       )}
 
-      {forecast && <RevenueChart points={forecast.points} />}
+      {forecast && <RevenueChart points={chartPoints} viewMode={viewMode} />}
 
       <RevenuePlanningGrid
         profitCenters={profitCenters}
         revenue={revenue}
         periodConfigs={periodConfigs}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
         onReload={loadAll}
       />
     </div>
