@@ -14,6 +14,8 @@ interface Props {
   profitCenters: ProfitCenterOption[];
   revenue: RevenueRow[];
   periodConfigs: PeriodConfig[];
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
   onReload: () => void;
 }
 
@@ -91,8 +93,7 @@ const VIEW_BADGE: Record<ViewMode, string> = {
   planning: "bg-blue-50 text-blue-700 border border-blue-200",
 };
 
-export default function RevenuePlanningGrid({ profitCenters, revenue, periodConfigs, onReload }: Props) {
-  const [viewMode, setViewMode] = useState<ViewMode>("planning");
+export default function RevenuePlanningGrid({ profitCenters, revenue, periodConfigs, viewMode, onViewModeChange, onReload }: Props) {
   const groups = groupByDepartment(profitCenters);
 
   const activeConfig = periodConfigs.find((c) => c.type === viewMode);
@@ -225,7 +226,7 @@ export default function RevenuePlanningGrid({ profitCenters, revenue, periodConf
           {(["past", "actual", "planning"] as ViewMode[]).map((mode) => (
             <button
               key={mode}
-              onClick={() => setViewMode(mode)}
+              onClick={() => onViewModeChange(mode)}
               className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
                 viewMode === mode
                   ? "bg-white shadow-sm text-gray-800"

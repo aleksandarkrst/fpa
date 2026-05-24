@@ -20,8 +20,17 @@ interface ForecastPoint {
   isProjected: boolean;
 }
 
+type ViewMode = "past" | "actual" | "planning";
+
+const CHART_TITLES: Record<ViewMode, string> = {
+  past: "Revenue — Past Actuals",
+  actual: "Revenue — Actuals & Forecast",
+  planning: "Revenue — Planning Forecast",
+};
+
 interface Props {
   points: ForecastPoint[];
+  viewMode?: ViewMode;
 }
 
 function fmtCurrency(v: number) {
@@ -41,7 +50,15 @@ function fmtPeriod(period: string) {
   return `${months[parseInt(month) - 1]} ${year.slice(2)}`;
 }
 
-export default function RevenueChart({ points }: Props) {
+export default function RevenueChart({ points, viewMode = "actual" }: Props) {
+  if (points.length === 0) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 p-6 flex items-center justify-center h-40 text-gray-400 text-sm">
+        No data available for the selected period
+      </div>
+    );
+  }
+
   const firstProjected = points.find((p) => p.isProjected)?.period;
 
   const data = points.map((p) => ({
@@ -54,7 +71,7 @@ export default function RevenueChart({ points }: Props) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6">
       <h2 className="text-sm font-semibold text-gray-700 mb-4">
-        Revenue — Actuals & Forecast
+        {CHART_TITLES[viewMode]}
       </h2>
       <ResponsiveContainer width="100%" height={340}>
         <ComposedChart data={data} margin={{ top: 4, right: 16, left: 16, bottom: 0 }}>
