@@ -2,7 +2,13 @@ import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
 
-const DB_DIR = path.join(process.cwd(), "data");
+// On Vercel (and most serverless hosts) the deployment bundle is read-only;
+// only /tmp is writable, and it is not persisted across invocations or
+// deployments. Use it there so the app doesn't crash at runtime, falling
+// back to a local ./data directory for normal (non-serverless) hosting.
+const DB_DIR = process.env.VERCEL
+  ? path.join("/tmp", "fpa-data")
+  : path.join(process.cwd(), "data");
 const DB_PATH = path.join(DB_DIR, "fpa.db");
 
 let db: Database.Database | null = null;
